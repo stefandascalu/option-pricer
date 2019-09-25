@@ -10,26 +10,25 @@ public class MonteCarloOptionKernel extends Kernel {
     private final  float maturityDate;
     private final int iterations;
 
-    private final float[] rnd;
-    private final float[] mcResults;
+    private final float[] gaussianRandom;
+    private final float[] prices;
     private float[] result;
 
     private int operation = 0;
 
     private final int steps = 100;
 
-    int i = 0;
 
-    public MonteCarloOptionKernel(GPUOptionTrade gpuOptionTrade, int iterations, float[] rnd) {
+    public MonteCarloOptionKernel(GPUOptionTrade gpuOptionTrade, int iterations, float[] gaussianRandom) {
         this.stockPrices = gpuOptionTrade.getStockPrices();
         this.strikePrices = gpuOptionTrade.getStrikePrices();
         this.volatilites = gpuOptionTrade.getVolatilites();
         this.riskRate = gpuOptionTrade.getRiskRate();
         this.maturityDate = gpuOptionTrade.getMaturityDate();
         this.iterations = iterations;
-        this.rnd = rnd;
+        this.gaussianRandom = gaussianRandom;
 
-        this.mcResults = new float[iterations * this.stockPrices.length];
+        this.prices = new float[iterations * this.stockPrices.length];
         this.result = new float[this.stockPrices.length];
     }
 
@@ -38,29 +37,28 @@ public class MonteCarloOptionKernel extends Kernel {
         //TODO 2. Create the run method of the kernel
     }
 
-    public void calculateMonteCarlo(int mcIter, int stockIdx, int steps) {
-        float volatility = this.volatilites[stockIdx];
-        float stockPrice = this.stockPrices[stockIdx];
-        float strikePrice = this.strikePrices[stockIdx];
+    public void calculateMonteCarlo(int iteration, int index, int steps) {
+        float volatility = this.volatilites[index];
+        float stockPrice = this.stockPrices[index];
+        float strikePrice = this.strikePrices[index];
         float deltaT = maturityDate/steps;
         float sum = stockPrice;
         for(int i=0;i<steps;i++) {
-            float eps = rnd[i * iterations + mcIter % iterations];
+            float eps = gaussianRandom[i * iterations + iteration % iterations];
             sum = sum * exp(
                     (this.riskRate - 0.5f * volatility) * deltaT
                             + sqrt(volatility * deltaT) * eps);
         }
-        mcResults[mcIter] = max(sum - strikePrice, 0.0f);
+        prices[iteration] = max(sum - strikePrice, 0.0f);
     }
 
     public void aggregate(int stockIdx) {
         float sum = 0;
-        for(int j=0;j<iterations;j++) {;
+        for(int j=0;j<iterations;j++) {
             int index = stockIdx * iterations + j;
-            sum += mcResults[index];
+            sum += prices[index];
         }
-        float sTr = sum / iterations;
-        result[stockIdx] = sTr * exp(-riskRate * maturityDate);
+        result[stockIdx] = (sum / iterations) * exp(-riskRate * maturityDate);
     }
 
     public void setOperation(int operation) {
