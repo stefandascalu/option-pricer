@@ -34,7 +34,15 @@ public class MonteCarloOptionKernel extends Kernel {
 
     @Override
     public void run() {
-        //TODO 2. Create the run method of the kernel
+        int mcIter = getGlobalId();
+        int stockPricesIndex = mcIter / iterations;
+        if (operation == 0) {
+            calculateMonteCarlo(mcIter, stockPricesIndex, steps);
+        }
+
+        if(operation == 1) {
+            aggregate(mcIter);
+        }
     }
 
     public void calculateMonteCarlo(int iteration, int index, int steps) {

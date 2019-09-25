@@ -37,7 +37,7 @@ public class OptionPricerRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         List<OptionTrade> optionTrades = optionGenerator.generateOptionTrades();
-//        monteCarloService.priceOnCpu(optionTrades);
+        monteCarloService.priceOnCpu(optionTrades);
         monteCarloService.priceOnGpu(optionTrades);
     }
 }

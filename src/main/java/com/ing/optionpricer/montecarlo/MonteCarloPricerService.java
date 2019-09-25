@@ -29,7 +29,25 @@ public class MonteCarloPricerService {
     }
 
     public Double priceOptionTrade(OptionTrade optionTrade, int numberOfSimulations, int steps) throws InterruptedException, ExecutionException {
-        //TODO 1. Multi threaded pricing
+        List<Callable<Double>> taskList = new ArrayList<>();
+        for(int i=0;i<numberOfSimulations;i++) {
+            taskList.add(() -> generateOptionPrice(optionTrade, steps));
+        }
+
+        int numberOfCores = Runtime.getRuntime().availableProcessors();
+
+//        log.info("Pricing tradeId {}", optionTrade.getTradeId());
+        ExecutorService executorService = Executors.newFixedThreadPool(numberOfCores);
+        List<Future<Double>> resultList = executorService.invokeAll(taskList);
+        executorService.shutdown();
+
+        double sum = 0.0;
+        for(Future<Double> result : resultList) {
+            sum += result.get();
+        }
+
+//        log.info("Finished pricing tradeId {}", optionTrade.getTradeId());
+        return sum/numberOfSimulations * Math.exp(-optionTrade.getRiskRate() * optionTrade.getMaturityDate());
     }
 
     private double generateOptionPrice(OptionTrade optionTrade, int steps) {
